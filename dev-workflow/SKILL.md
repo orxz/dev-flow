@@ -117,7 +117,7 @@ user-invocable: true
 | 优化重构 | "优化"、"重构"、"改进"XX模块 | 流程D: 模块优化重构 |
 | 功能评估 | "评估"、"分析"、"调研"、"是否值得"、"可行性" | 流程E: 功能评估 |
 | 紧急修复 | "紧急"、"线上"、"hotfix"、"挂了"、"崩了" | 流程F: 紧急修复 |
-| 依赖升级 | "升级"、"更新版本"、"composer"、"依赖" | 流程G: 依赖升级 |
+| 依赖升级 | "升级"、"更新版本"、"依赖" | 流程G: 依赖升级 |
 
 **不适用:** 单行修复、改配置、改文案 — 直接改即可。
 
@@ -167,7 +167,7 @@ investigate  TDD         TDD     review   ship
 | 1. 定位根因 | `/investigate` | gstack 定位根因，写入 findings.md。**禁止先改代码** |
 | 2. 写复现测试 | `/test-driven-dev` | 先写失败测试复现 bug（红） |
 | 3. 修复 | 编码 | 最少改动让测试通过（绿） |
-| 4. 跑全量测试 | `php artisan test` | 确认无回归 |
+| 4. 跑全量测试 | 运行全量测试 | 确认无回归 |
 | 5. 审查 | `/requesting-code-review` | Superpowers |
 | 6. 更新文档 | `/document-release` | 如根因值得记录，更新 docs |
 | 7. 提交 | `/ship` | gstack |
@@ -207,9 +207,9 @@ investigate  TDD         TDD     review   ship
 | 1. 补测试 | 编码 | 如果模块测试覆盖不足，**先补测试**建立安全网 |
 | 2. 识别瓶颈 | `/plan-eng-review` | gstack 定位性能/结构问题，定重构边界 |
 | 3. 拆解计划 | `/writing-plans` | 拆为小步重构，每步可独立跑测试验证 |
-| 4. 逐步重构 | `/executing-plans` | 逐步执行：改 → `php artisan test` → 绿 → 下一步 |
+| 4. 逐步重构 | `/executing-plans` | 逐步执行：改 → 运行测试 → 绿 → 下一步 |
 | 5. 每步审查 | `/requesting-code-review` | 每完成一步后 |
-| 6. 全量测试 | `php artisan test` + `./vendor/bin/pint --test` | 确认无回归 |
+| 6. 全量测试 | 运行全量测试 + 代码格式检查 | 确认无回归 |
 | 7. 审查 | `/review` | gstack |
 | 8. 更新文档 | `/document-release` | 更新架构文档、CLAUDE.md 对应章节 |
 | 9. 提交 | `/ship` | gstack |
@@ -280,12 +280,12 @@ investigate   编码       verify     TDD(事后)
 
 | 步骤 | 命令 | 说明 |
 |------|------|------|
-| 1. 兼容分析 | 读 CHANGELOG + Explore | 确认 breaking changes、废弃 API、新要求（PHP/Core 版本） |
+| 1. 兼容分析 | 读 CHANGELOG + Explore | 确认 breaking changes、废弃 API、新要求（语言/运行时版本） |
 | 2. 升级计划 | `/plan-eng-review` | gstack 确定升级范围、顺序、回滚方案 |
-| 3. 逐步升级 | 编码 | 逐包升级：`composer update pkg` → test → 绿 → 下一个 |
-| 4. 全量测试 | `php artisan test` + `./vendor/bin/pint --test` | 确认无回归 |
+| 3. 逐步升级 | 编码 | 逐包升级：更新依赖 → 运行测试 → 绿 → 下一个 |
+| 4. 全量测试 | 运行全量测试 + 代码格式检查 | 确认无回归 |
 | 5. 审查 | `/review` | gstack |
-| 6. 更新文档 | `/document-release` | 更新 CLAUDE.md 技术栈版本、composer.json 说明 |
+| 6. 更新文档 | `/document-release` | 更新技术栈版本、依赖配置文件说明 |
 | 7. 提交 | `/ship` | gstack |
 
 **升级清单**:
@@ -294,9 +294,9 @@ investigate   编码       verify     TDD(事后)
 |--------|------|
 | CHANGELOG | 必读每个包的 release notes |
 | breaking changes | 搜索 `BREAKING`、`deprecated`、`removed` |
-| 版本约束 | 确认 `composer.json` 版本范围正确 |
-| 环境要求 | PHP 版本、扩展、系统依赖 |
-| 锁文件 | 提交 `composer.lock` 变更 |
+| 版本约束 | 确认依赖配置文件版本范围正确 |
+| 环境要求 | 语言版本、运行时要求、系统依赖 |
+| 锁文件 | 提交依赖锁文件变更 |
 | 回滚方案 | 记录回滚步骤，必要时保留旧版分支 |
 
 > **禁止:** 不看 CHANGELOG 就升级。多包混合批量升级。升级同时加新功能或重构。无回滚方案直接升级。
@@ -335,7 +335,7 @@ git branch -D test/task-name
 | 功能重做 | 架构文档、接口文档、调用方说明 | `/document-release` |
 | 模块重构 | 架构文档、CLAUDE.md 对应章节 | `/document-release` |
 | 紧急修复 | 复盘记录 → findings.md + 根因文档（事后） | 写入 findings.md |
-| 依赖升级 | CLAUDE.md 技术栈版本、composer.json 说明 | `/document-release` |
+| 依赖升级 | 技术栈版本、依赖配置文件说明 | `/document-release` |
 
 **原则**: 改了什么，就更新对应的描述文档。文档落后于代码 = 技术债务。
 
