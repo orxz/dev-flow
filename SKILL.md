@@ -8,102 +8,128 @@ user-invocable: true
 
 ## 概述
 
-开发任务通过三个工具协作完成：**gstack**（决策/审查）、**Superpowers**（执行/质量）、**planning-with-files**（状态持久化）。三者按阶段分工，不可跳步。
+**关键规则**: 每个阶段必须通过 Skill 工具实际调用对应技能。内部思考不算完成。你说"我先分析一下"然后直接写代码 = 跳过了该阶段。
 
-**关键规则**: 每个阶段必须通过 Skill 工具实际调用对应技能，内部思考不算完成阶段。你说"我先分析一下"然后直接写代码 = 跳过了阶段1。
+## 场景路由
 
-## 何时使用
+收到任务后，先判断场景，走对应流程：
 
-**触发条件：**
-- 新功能实现、重构、跨文件修改
-- 不确定当前阶段该用哪个工具
-- 任务跨多个会话需要进度追踪
-- 准备 /clear 前需要保存状态
+| 场景 | 典型关键词 | 走哪个流程 |
+|------|-----------|-----------|
+| 新功能 | "新增"、"开发"、"实现"、"添加" | 流程A: 新功能开发 |
+| Bug修复 | "修复"、"报错"、"bug"、"坏了" | 流程B: Bug修复 |
+| 功能重做 | "重做"、"重写"、"翻新"XX模块 | 流程C: 功能重做 |
+| 优化重构 | "优化"、"重构"、"改进"XX模块 | 流程D: 模块优化重构 |
 
-**不适用：** 单行修复、配置调整、纯文案修改（直接改即可）
+**不适用:** 单行修复、改配置、改文案 — 直接改即可。
 
 ## 三工具定位
 
 | 工具 | 职责 | 产出 |
 |------|------|------|
-| gstack | 决策与审查（意图层 + 收尾层） | plan docs, review reports |
-| Superpowers | 执行与质量（执行层） | 代码, 测试, commits |
-| planning-with-files | 状态持久化（贯穿全程） | task_plan.md, findings.md, progress.md |
+| gstack | 决策/审查 | plan docs, review reports |
+| Superpowers | 执行/质量 | 代码, 测试, commits |
+| planning-with-files | 状态持久化 | task_plan.md, findings.md, progress.md |
 
-## 阶段流程
+---
 
-```dot
-digraph workflow {
-    rankdir=LR;
-    node [shape=box];
+## 流程A: 新功能开发
 
-    subgraph cluster_intent {
-        label="阶段1: 意图 (gstack)";
-        plan_eng [label="/plan-eng-review\n架构审查"];
-        office [label="/office-hours\n产品决策(可选)"];
-        ceo [label="/plan-ceo-review\n范围决策(可选)"];
-        design [label="/plan-design-review\nUI审查(有UI时)"];
-    }
-
-    subgraph cluster_plan {
-        label="阶段2: 规划 (Superpowers + planning-with-files)";
-        write_plan [label="/writing-plans\n产出实施计划"];
-        init_pwf [label="/plan-zh\n初始化进度文件"];
-    }
-
-    subgraph cluster_exec {
-        label="阶段3: 执行 (Superpowers + planning-with-files)";
-        sdd [label="/subagent-driven-dev\n或 /executing-plans"];
-        tdd [label="严格TDD\n先测试后实现"];
-        review_per_task [label="/requesting-code-review\n每Task完成后"];
-    }
-
-    subgraph cluster_finish {
-        label="阶段4: 收尾 (gstack)";
-        review [label="/review\n代码审查"];
-        docs [label="/document-release\n更新文档"];
-        ship [label="/ship\n提交推送创建PR"];
-    }
-
-    plan_eng -> write_plan;
-    write_plan -> init_pwf;
-    init_pwf -> sdd;
-    sdd -> tdd;
-    tdd -> review_per_task;
-    review_per_task -> review;
-    review -> docs;
-    docs -> ship;
-}
+```
+阶段1(意图) → 阶段2(规划) → 阶段3(执行) → 阶段4(收尾)
+  gstack        Superpowers     Superpowers      gstack
+                + pwf           + pwf
 ```
 
-## 速查：什么阶段用什么工具
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 1. 架构审查 | `/plan-eng-review` | gstack 审查方案（新功能必做） |
+| 2. 产品决策 | `/office-hours` 或 `/plan-ceo-review` | 可选 |
+| 3. 写实施计划 | `/writing-plans` | Superpowers 产出计划文档 |
+| 4. 初始化进度 | `/plan-zh` | planning-with-files 创建 task_plan.md |
+| 5. 编码 | `/subagent-driven-dev` 或 `/executing-plans` | Superpowers + 严格 TDD |
+| 6. 每task审查 | `/requesting-code-review` | 每完成一个 task 后 |
+| 7. 全部完成审查 | `/review` | gstack 最终代码审查 |
+| 8. 更新文档 | `/document-release` | gstack |
+| 9. 提交发布 | `/ship` | gstack 提交推送创建PR |
 
-| 你在做什么 | 用哪个工具 | 具体命令 |
-|-----------|-----------|---------|
-| 开始新功能，不确定方案 | gstack | `/plan-eng-review` |
-| 产品范围决策 | gstack | `/office-hours` 或 `/plan-ceo-review` |
-| 有 UI 改动 | gstack | `/plan-design-review` |
-| 写实施计划 | Superpowers | `/writing-plans` |
-| 初始化进度文件 | planning-with-files | `/plan-zh` |
-| 写代码 | Superpowers | `/subagent-driven-dev` 或 `/executing-plans` |
-| 每完成一个 task | Superpowers | `/requesting-code-review` |
-| 全部完成，审查 | gstack | `/review` |
-| 更新文档 | gstack | `/document-release` |
-| 提交推送 | gstack | `/ship` |
-| 遇到 bug | 视情况 | 任务内→Superpowers `/systematic-debugging`；跨模块→gstack `/investigate` + `/freeze` |
+---
+
+## 流程B: Bug修复
+
+**核心原则:** 先定位再修改，禁止先改代码再找原因。
+
+```
+定位根因 → 复现测试 → 修复 → 审查 → 提交
+investigate  TDD         TDD     review   ship
+```
+
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 1. 定位根因 | `/investigate` | gstack 定位根因，写入 findings.md。**禁止先改代码** |
+| 2. 写复现测试 | `/test-driven-dev` | 先写失败测试复现 bug（红） |
+| 3. 修复 | 编码 | 最少改动让测试通过（绿） |
+| 4. 跑全量测试 | `php artisan test` | 确认无回归 |
+| 5. 审查 | `/requesting-code-review` | Superpowers |
+| 6. 提交 | `/ship` | gstack |
+
+> 跨模块 bug → 步骤1用 `/investigate` + `/freeze`。同一问题失败3次 → 写入 findings.md，停止并汇报。
+
+---
+
+## 流程C: 功能重做
+
+**核心原则:** 先理解旧实现的接口契约和调用方，再设计新方案。
+
+```
+分析旧实现 → 架构审查 → 走流程A 阶段2-4
+```
+
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 1. 分析旧实现 | 读代码 + Explore 子代理 | 理清：接口签名、调用方、数据流、测试覆盖 |
+| 2. 架构审查 | `/plan-eng-review` | gstack 新旧方案对比 |
+| 3. 之后 | 接流程A 步骤2-9 | 同新功能流程 |
+
+> **关键约束:** 接口签名不兼容变更时必须列出所有调用方。有测试覆盖的旧代码，先确认测试是否仍然有效。
+
+---
+
+## 流程D: 模块优化重构
+
+**核心原则:** 测试先行作为安全网，小步重构，每步可独立验证。
+
+```
+补测试 → 识别瓶颈 → 小步重构 → 逐步验证 → 审查 → 提交
+```
+
+| 步骤 | 命令 | 说明 |
+|------|------|------|
+| 1. 补测试 | 编码 | 如果模块测试覆盖不足，**先补测试**建立安全网 |
+| 2. 识别瓶颈 | `/plan-eng-review` | gstack 定位性能/结构问题，定重构边界 |
+| 3. 拆解计划 | `/writing-plans` | 拆为小步重构，每步可独立跑测试验证 |
+| 4. 逐步重构 | `/executing-plans` | 逐步执行：改 → `php artisan test` → 绿 → 下一步 |
+| 5. 每步审查 | `/requesting-code-review` | 每完成一步后 |
+| 6. 全量测试 | `php artisan test` + `./vendor/bin/pint --test` | 确认无回归 |
+| 7. 审查 | `/review` | gstack |
+| 8. 提交 | `/ship` | gstack |
+
+> **禁止:** 没有测试安全网就重构。跨多模块一次性大改。重构同时加新功能。
+
+---
 
 ## 测试隔离规则
 
 技能测试或子代理实验**禁止在主工作区执行**，必须用 git worktree 隔离：
 
 ```bash
-git worktree add /tmp/task-test -b test/task-name   # 创建隔离区
+git worktree add /tmp/task-test -b test/task-name
 # 子代理在 /tmp/task-test 里操作
-git worktree remove /tmp/task-test --force            # 完成后清理
-git branch -D test/task-name                          # 删除测试分支
+git worktree remove /tmp/task-test --force
+git branch -D test/task-name
 ```
 
-## 持久化规则（强制）
+## 持久化规则（强制，planning-with-files）
 
 | 时机 | 操作 |
 |------|------|
@@ -113,37 +139,31 @@ git branch -D test/task-name                          # 删除测试分支
 | /clear 之前 | **必须先更新 progress.md** |
 | 上下文达 60% | 主动 /clear + 依赖 progress.md 恢复 |
 
-## 调试规则
-
-- 任务内 bug → Superpowers `/systematic-debugging` + 写入 findings.md
-- 跨模块 bug → gstack `/investigate` + `/freeze`
-- 同一问题失败 3 次 → 写入 findings.md，标记阻塞，**停止并汇报**
-
 ## 禁止事项
 
-- ❌ 直接进入 EnterPlanMode（必须先通过 gstack 审查或 Superpowers 规划）
+- ❌ 直接进入 EnterPlanMode（必须先通过 gstack/Superpowers 规划）
 - ❌ 修改代码前不写测试
 - ❌ /clear 前不更新 progress.md
 - ❌ /investigate 之前修改代码
 - ❌ 跳过 /review 直接 /ship
-- ❌ 技能测试/子代理实验直接在项目工作区跑（污染未提交代码）
+- ❌ 重构时无测试安全网
+- ❌ 技能测试/子代理实验在主工作区执行
 
 ## 常见错误
 
 | 错误 | 后果 | 正确做法 |
 |------|------|---------|
-| 跳过阶段1直接写代码 | 方案错误、返工 | 新功能必须先 /plan-eng-review |
-| 不更新 progress.md | /clear 后丢失进度 | 每次变更后立即更新 |
-| 跳过 /review 直接 /ship | 未审查代码上线 | 严格执行阶段4 |
-| 用错工具 | 效率低下 | 参考速查表 |
-| 编码前不写测试 | 测试后补失去 TDD 意义 | `/test-driven-dev` 强制执行 |
-| 内部思考代替工具调用 | 缺少审查、缺少进度文件 | 每个阶段必须实际调用 Skill 工具，不是脑中过一遍 |
+| Bug没定位就改代码 | 治标不治本、引入新bug | 先 /investigate |
+| 重构无测试安全网 | 引入回归 | 先补测试 |
+| 重做不理解旧接口 | 破坏调用方 | 先分析所有调用方 |
+| 跳过阶段1直接写代码 | 方案错误 | 新功能必走 /plan-eng-review |
+| 不更新 progress.md | /clear 后丢失进度 | 每次变更后更新 |
+| 内部思考代替工具调用 | 缺少审查 | 必须 invoke Skill 工具 |
 
-## Red Flags — 立即停止检查
+## Red Flags
 
-- "这个很简单，直接写代码就行" → 非平凡任务仍需规划
+- "这个bug很简单，直接改" → 简单bug也要写复现测试
+- "重构顺手加个功能" → 重构和新功能必须分开
 - "测试后面再补" → TDD 不允许反转
-- "先 /clear 再更新 progress.md" → 必须先更新再 /clear
-- "跳过审查直接发布吧" → /review 是强制步骤
-- "用 EnterPlanMode 就够了" → 必须先走 gstack/Superpowers 规划流程
-- "我内部已经分析了方案，不用再调用 gstack" → 内部思考不是工具调用，必须实际 invoke Skill 工具
+- "旧代码我大概懂了" → 必须确认所有调用方
+- "跳过审查直接发布" → /review 是强制步骤
