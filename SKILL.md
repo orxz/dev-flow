@@ -92,6 +92,17 @@ digraph workflow {
 | 提交推送 | gstack | `/ship` |
 | 遇到 bug | 视情况 | 任务内→Superpowers `/systematic-debugging`；跨模块→gstack `/investigate` + `/freeze` |
 
+## 测试隔离规则
+
+技能测试或子代理实验**禁止在主工作区执行**，必须用 git worktree 隔离：
+
+```bash
+git worktree add /tmp/task-test -b test/task-name   # 创建隔离区
+# 子代理在 /tmp/task-test 里操作
+git worktree remove /tmp/task-test --force            # 完成后清理
+git branch -D test/task-name                          # 删除测试分支
+```
+
 ## 持久化规则（强制）
 
 | 时机 | 操作 |
@@ -115,6 +126,7 @@ digraph workflow {
 - ❌ /clear 前不更新 progress.md
 - ❌ /investigate 之前修改代码
 - ❌ 跳过 /review 直接 /ship
+- ❌ 技能测试/子代理实验直接在项目工作区跑（污染未提交代码）
 
 ## 常见错误
 
