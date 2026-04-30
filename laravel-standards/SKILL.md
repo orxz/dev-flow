@@ -1,6 +1,6 @@
 ---
 name: laravel-standards
-description: Use when working on any Laravel project — enforces layered architecture, TDD, API design, error handling, caching, and coding discipline. Activates on keywords: controller, service, model, request, route, api, endpoint, migration, eloquent, laravel.
+description: "Use when working on any Laravel project — enforces layered architecture, TDD, API design, error handling, caching, and coding discipline. Activates on keywords: controller, service, model, request, route, api, endpoint, migration, eloquent, laravel."
 user-invocable: true
 ---
 
