@@ -6,7 +6,7 @@ user-invocable: true
 
 # Laravel 工程规范
 
-提炼自生产级 Laravel 12 项目，聚焦可复用工程纪律。
+提炼自生产级 Laravel 项目，聚焦可复用工程纪律。
 
 ---
 
