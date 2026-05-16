@@ -1,4 +1,4 @@
-# dev-workflow
+# dev-flow
 
 A Claude skill that routes non-trivial development tasks through a decision tree of 7 workflow paths, from evaluation through TDD, review, documentation, and shipping.
 
@@ -23,13 +23,13 @@ Each flow enforces: plan before coding, TDD, per-task review, documentation sync
 This repository is the skill. Link it into your Claude skills directory:
 
 ```bash
-ln -s "$(pwd)" ~/.claude/skills/dev-workflow
+ln -s "$(pwd)" ~/.claude/skills/dev-flow
 ```
 
 Or copy the directory directly if you prefer:
 
 ```bash
-cp -r . ~/.claude/skills/dev-workflow
+cp -r . ~/.claude/skills/dev-flow
 ```
 
 ## Optional Tool Suites
