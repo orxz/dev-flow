@@ -2,14 +2,10 @@
 name: dev-workflow
 user-invocable: true
 description: |
-  Routes non-trivial development tasks through a decision tree of 7 workflow
-  paths covering the full lifecycle from evaluation to shipping. Enforces
-  planning-before-coding, TDD, per-task review, documentation sync, and
-  progress persistence. Use when starting a multi-file feature, bug fix,
-  refactor, dependency upgrade, or emergency hotfix. Use when tasks span
-  multiple sessions and need progress tracking. Proactively suggest when the
-  user describes a non-trivial development task without choosing a workflow —
-  before any code is written.
+  将非平凡开发任务路由到 7 条工作流路径，覆盖从评估到上线的完整生命周期。
+  强制执行：先规划后编码、TDD、逐任务审查、文档同步、进度持久化。
+  适用于：多文件功能开发、bug修复、重构、依赖升级、紧急热修复、跨会话任务。
+  当用户描述一个非平凡开发任务但未选择工作流时，主动建议使用——在任何代码编写之前。
 triggers:
   - 开发工作流
   - which workflow
@@ -35,6 +31,7 @@ allowed-tools:
   - AskUserQuestion
   - Skill
   - Task
+  - TodoWrite
 ---
 
 # 开发工作流
@@ -57,47 +54,6 @@ allowed-tools:
 - **做了什么**: 一句话描述当前阶段的产出
 - **下一步是什么**: 明确下一个阶段
 - **有无跳过**: 如跳过了某个步骤，说明原因（"觉得没必要" 不是正当理由）
-
-## 完整生命周期
-
-7 个流程覆盖一条任务从"要不要做"到"做完上线"的完整链路：
-
-```
-收到任务
-  │
-  1. 会改代码吗？
-  ├── 不会 → 【流程E: 评估】
-  │            │
-  │            明确目标 → 信息收集 → 分析评估 → 输出结论
-  │            │
-  │            └── 结论：做 → 进入步骤2
-  │            └── 结论：不做 → 结束
-  │
-  └── 会 ──→
-        2. 紧急吗？（线上挂了、用户大面积受影响）
-          ├── 是 → 【流程F: 紧急修复】→ 快速修复 → 事后补测
-          └── 否 →
-                3. 是依赖/框架升级吗？
-                  ├── 是 → 【流程G: 依赖升级】
-                  └── 否 →
-                        4. 现有功能有参考吗？ ──→ 选择流程 A/B/C/D
-                        │
-                        流程A/C/D ──→ 共性阶段链：
-                        │
-                        规划 ──→ 执行(TDD) ──→ 审查 ──→ 发布
-                        │
-                        └── 完成 ✅
-```
-
-**关键衔接点**:
-
-| 衔接 | 说明 |
-|------|------|
-| E → A/B/C/D/G | 评估结论为"做"时，进入对应实现流程 |
-| C → A | 重做分析完旧实现后，接新功能开发流程 |
-| F → 发布 | 紧急修复快速发布，事后补测+复盘 |
-| 所有流程 → 发布 | A/B/C/D/G 最终都通过发布收尾 |
-| 评估循环 | 结论为"不做"，任务到此结束 |
 
 ## 场景引导
 
@@ -154,13 +110,25 @@ allowed-tools:
 
 三个工具套件可以加速流程，但不是硬依赖。下方流程步骤中每个外部技能都有"如可用/否则"双路径。
 
+**技能名称约定**: 带 `/` 前缀的是 slash 命令（gstack），不带前缀的是技能名（Superpowers）。两者都通过 Skill 工具调用。
+
 **如何判断工具是否可用**: 尝试调用技能（通过 Skill 工具）。如果技能不存在，执行"否则"路径。
 
-| 工具套件 | 技能名 | 不可用时手工替代 |
+| 工具套件 | 技能名 | 不可用时 |
 |---|---|---|
-| gstack | `/plan-eng-review`, `/review`, `/investigate`, `/ship`, `/document-release`, `/office-hours`, `/plan-ceo-review`, `/freeze` | 架构审查 → 写设计文档（数据流、接口、边界、权衡）。代码审查 → 完整自查 diff。根因定位 → 读代码+加日志+git bisect。发布 → 手工 commit/push/创建 PR。文档更新 → 手工编辑 README/CHANGELOG。 |
-| Superpowers | `writing-plans`, `executing-plans`, `subagent-driven-development`, `requesting-code-review`, `test-driven-development` | 计划 → 写 markdown 步骤清单。执行 → 逐步实现（红→绿→重构）。审查 → 自查 diff。TDD → 手工先写测试再写实现。 |
-| planning-with-files | `planning-with-files-zh` | 手工创建和维护 `task_plan.md`（带复选框）、`progress.md`（进度记录）、`findings.md`（发现记录）。 |
+| gstack | `/plan-eng-review`, `/review`, `/investigate`, `/ship`, `/document-release`, `/office-hours`, `/plan-ceo-review`, `/freeze` | 见各流程步骤中的"否则"路径 |
+| Superpowers | `writing-plans`, `executing-plans`, `subagent-driven-development`, `requesting-code-review`, `test-driven-development` | 见各流程步骤中的"否则"路径 |
+| planning-with-files | `planning-with-files-zh` | 手工创建和维护 `task_plan.md`（带复选框）、`progress.md`（进度记录）、`findings.md`（发现记录） |
+
+**安装缺失套件**: 当流程中反复命中"否则"路径时，提示用户安装对应套件以获得更佳体验。安装方式取决于用户环境，常见的：
+
+| 套件 | 典型安装方式 |
+|------|-------------|
+| gstack | `npx gstack install` 或参考 gstack 文档 |
+| Superpowers | 将 Superpowers 技能目录链接到 `~/.claude/skills/` 或 `~/.qoder/skills/` |
+| planning-with-files | 将技能目录链接到 `~/.claude/skills/` 或 `~/.qoder/skills/` |
+
+如果用户明确表示不需要某个套件，后续不再提示。
 
 ---
 
@@ -219,14 +187,14 @@ allowed-tools:
 **核心原则:** 先理解旧实现的接口契约和调用方，再设计新方案。
 
 ```
-分析旧实现 → 架构审查 → 接流程A（从执行阶段开始）
+分析旧实现 → 架构审查 → 接流程A（步骤4起：初始化进度→编码→审查→发布）
 ```
 
 | 步骤 | 命令 | 说明 |
 |------|------|------|
 | 1. 分析旧实现 | 读代码 + Explore 子代理 | 理清：接口签名、调用方、数据流、测试覆盖 |
 | 2. 架构审查 | 如可用: `/plan-eng-review` · 否则: 手写新旧方案对比文档 | |
-| 3. 之后 | 接流程A 执行阶段（步骤3起） | 新功能的编码→审查→发布阶段 |
+| 3. 之后 | 接流程A 步骤4起（初始化进度→编码→审查→发布） | 已有架构审查(步骤1-2)和方案(本步骤)，跳过A的步骤1-3 |
 
 > **关键约束:** 接口签名不兼容变更时必须列出所有调用方。有测试覆盖的旧代码，先确认测试是否仍然有效。
 
@@ -304,7 +272,7 @@ allowed-tools:
 | 1. 定位止损 | 如可用: `/investigate` · 否则: 手工快速定位根因 | **先止血**（回滚/切流/关功能） |
 | 2. 最小修复 | 编码 | 只改必要代码，跳过完整 TDD。**禁止顺手重构** |
 | 3. 验证上线 | 如可用: `/ship` · 否则: 手工确认修复有效并提交推送 | |
-| 4. 事后补测 | 如可用: `test-driven-development` · 否则: 手工补复现测试+回归测试 | **事后必做** |
+| 4. 事后补测 | 如可用: `test-driven-development` · 否则: 手工补复现测试+回归测试 | 修复上线后**同一会话内**必做 |
 | 5. 复盘 | 写入 findings.md | 记录根因、修复过程、预防措施 |
 
 > **规则:** 流程F 可跳过审查和 TDD（当时），但事后必须补测试。同一问题出现 2 次紧急修复 → 升级为流程C（重做）。**禁止**以"紧急"为借口跳过事后补测。
@@ -368,23 +336,11 @@ git branch -D test/task-name
 | 会话开始 | 检查 task_plan.md 是否存在，读取当前进度 |
 | 每完成一个 Task | 更新 task_plan.md（打勾）+ progress.md（记录） |
 | 发现关键信息 | 写入 findings.md |
-| /clear 之前 | **必须先更新 progress.md** |
-| 上下文达 60% | 主动 /clear + 依赖 progress.md 恢复 |
+| 上下文即将耗尽时 | **必须先更新 progress.md**，然后开启新会话，新会话从 progress.md 恢复 |
 
-## 文档更新规则（强制）
+## 文档更新规则
 
-代码变更后必须确保项目文档与代码一致：
-
-| 变更类型 | 更新内容 | 工具（如可用） |
-|----------|----------|------|
-| 新功能/新接口 | 路由文档、API 文档、CLAUDE.md 技术栈 | 如可用: `/document-release` · 否则: 手工更新文档 |
-| Bug 修复 | 如有根因值得记录 → findings.md → 必要时更新 docs | 如可用: `/document-release` · 否则: 手工更新文档 |
-| 功能重做 | 架构文档、接口文档、调用方说明 | 如可用: `/document-release` · 否则: 手工更新文档 |
-| 模块重构 | 架构文档、CLAUDE.md 对应章节 | 如可用: `/document-release` · 否则: 手工更新文档 |
-| 紧急修复 | 复盘记录 → findings.md + 根因文档（事后） | 写入 findings.md |
-| 依赖升级 | 技术栈版本、依赖配置文件说明 | 如可用: `/document-release` · 否则: 手工更新文档 |
-
-**原则**: 改了什么，就更新对应的描述文档。文档落后于代码 = 技术债务。
+代码变更后必须确保项目文档与代码一致。各流程步骤表中已标注"更新文档"步骤及对应工具。通用原则：**改了什么，就更新对应的描述文档。文档落后于代码 = 技术债务。**
 
 ## 版本号
 
@@ -398,32 +354,25 @@ git branch -D test/task-name
 
 - ❌ 无书面计划直接编码
 - ❌ 修改代码前不写测试
-- ❌ /clear 前不更新 progress.md
+- ❌ 上下文耗尽前不更新 progress.md
 - ❌ 定位根因之前修改代码
 - ❌ 跳过审查直接发布
 - ❌ 重构时无测试安全网
 - ❌ 技能测试/子代理实验在主工作区执行
 
-## 常见错误
+## 常见错误与 Red Flags
 
-| 错误 | 后果 | 正确做法 |
-|------|------|---------|
-| Bug没定位就改代码 | 治标不治本、引入新bug | 先定位根因（如可用 `/investigate`，否则手工排查） |
-| 重构无测试安全网 | 引入回归 | 先补测试 |
-| 重做不理解旧接口 | 破坏调用方 | 先分析所有调用方 |
-| 跳过阶段1直接写代码 | 方案错误 | 新功能必走架构审查（如可用 `/plan-eng-review`，否则手写设计文档） |
-| 不更新 progress.md | /clear 后丢失进度 | 每次变更后更新 |
-| 内部思考代替实际审查 | 缺少审查 | 必须完成明确的审查步骤，不是只在脑中过一遍 |
-
-## Red Flags
-
-- "这个bug很简单，直接改" → 简单bug也要写复现测试
-- "重构顺手加个功能" → 重构和新功能必须分开
-- "测试后面再补" → TDD 不允许反转
-- "旧代码我大概懂了" → 必须确认所有调用方
-- "跳过审查直接发布" → 审查是强制步骤
-- "线上紧急，先改了再说" → 走流程F，事后必补测试
-- "升级应该没风险" → 先读 CHANGELOG，必须有回滚方案
+| 反模式 | 后果 | 正确做法 |
+|--------|------|---------|
+| "这个bug很简单，直接改" | 治标不治本、引入新bug | 先定位根因（如可用 `/investigate`，否则手工排查），写复现测试 |
+| "重构顺手加个功能" | 混杂变更、难以审查 | 重构和新功能必须分开走不同流程 |
+| "测试后面再补" | TDD 被反转 | 先写失败测试 → 实现 → 通过 |
+| "旧代码我大概懂了" | 破坏调用方 | 必须列出所有调用方和接口签名 |
+| "跳过审查直接发布" | 缺少审查 | 审查是强制步骤，不能只在脑中过一遍 |
+| "线上紧急，先改了再说" | 事后永远不补 | 走流程F，事后必补测试 |
+| "升级应该没风险" | 引入兼容性故障 | 先读 CHANGELOG，必须有回滚方案 |
+| 跳过架构审查直接写代码 | 方案错误 | 新功能必走架构审查（如可用 `/plan-eng-review`，否则手写设计文档） |
+| 不更新 progress.md | 会话中断后丢失进度 | 每次变更后更新 |
 
 ## 异常处理
 
@@ -433,5 +382,5 @@ git branch -D test/task-name
 | 同一问题修复失败 3 次 | 停止，写入 findings.md，向用户汇报。可能是架构问题，考虑升级为流程C |
 | 测试套件无法通过 | 不发布。修复测试或修复代码，二选一，不允许跳过测试 |
 | 发现计划有遗漏 | 回到规划阶段补充，不要边写边改计划 |
-| 上下文接近上限 | 立即更新 progress.md → 执行 /clear → 依赖 progress.md 恢复 |
+| 上下文即将耗尽 | 立即更新 progress.md → 开启新会话 → 从 progress.md 恢复 |
 | 流程执行中途发现走错流程 | 停止当前流程，记录已完成的步骤，切换到正确流程重新开始 |
