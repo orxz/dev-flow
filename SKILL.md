@@ -1,12 +1,15 @@
 ---
-name: dev-workflow
+name: dev-flow
+version: 2.0.0
+updated: 2026-05-16
 user-invocable: true
 description: |
-  将非平凡开发任务路由到 7 条工作流路径，覆盖从评估到上线的完整生命周期。
-  强制执行：先规划后编码、TDD、逐任务审查、文档同步、进度持久化。
+  开发流程引擎——将非平凡开发任务路由到 7 条标准化流程，强制执行工程纪律（先规划后编码、TDD、逐任务审查、文档同步、进度持久化），覆盖从评估到上线的完整生命周期。
   适用于：多文件功能开发、bug修复、重构、依赖升级、紧急热修复、跨会话任务。
-  当用户描述一个非平凡开发任务但未选择工作流时，主动建议使用——在任何代码编写之前。
+  当用户描述一个非平凡开发任务时，主动建议使用——在任何代码编写之前。
 triggers:
+  - dev-flow
+  - 开发流程
   - 开发工作流
   - which workflow
   - how should I structure
@@ -15,7 +18,7 @@ triggers:
   - refactor process
   - emergency fix
   - dependency upgrade process
-  - 开发流程
+  - 工程方法论
   - 新增功能
   - 修复bug
   - 重构
@@ -34,7 +37,7 @@ allowed-tools:
   - TodoWrite
 ---
 
-# 开发工作流
+# dev-flow
 
 ## 工程原则
 
@@ -73,7 +76,8 @@ allowed-tools:
                           ├── 有，但它坏了 → 流程B
                           ├── 有，但要推倒重来 → 流程C
                           ├── 有，但要调整内部实现（行为不变）→ 流程D
-                          └── 没有，这是全新的 → 流程A
+                          ├── 没有，这是全新的 → 流程A
+                          └── 无法判断 → 用边界判定表分析模糊点，输出分析后询问用户确认
 ```
 
 **边界判定**:
@@ -120,15 +124,71 @@ allowed-tools:
 | Superpowers | `writing-plans`, `executing-plans`, `subagent-driven-development`, `requesting-code-review`, `test-driven-development` | 见各流程步骤中的"否则"路径 |
 | planning-with-files | `planning-with-files-zh` | 手工创建和维护 `task_plan.md`（带复选框）、`progress.md`（进度记录）、`findings.md`（发现记录） |
 
-**安装缺失套件**: 当流程中反复命中"否则"路径时，提示用户安装对应套件以获得更佳体验。安装方式取决于用户环境，常见的：
+**自动安装依赖套件**: 当流程中反复命中"否则"路径时，按以下流程处理：
 
-| 套件 | 典型安装方式 |
-|------|-------------|
-| gstack | `npx gstack install` 或参考 gstack 文档 |
-| Superpowers | 将 Superpowers 技能目录链接到 `~/.claude/skills/` 或 `~/.qoder/skills/` |
-| planning-with-files | 将技能目录链接到 `~/.claude/skills/` 或 `~/.qoder/skills/` |
+1. **检测**: 用 Bash 检查技能是否存在
+2. **询问**: 向用户确认是否安装（仅首次询问）
+3. **安装**: 用户确认后执行对应命令
+4. **验证**: 再次检测确认安装成功
+
+**路径约定**: 所有检测和安装统一使用 `SKILLS_DIR` 变量，优先 `~/.qoder/skills`（如存在），否则 `~/.claude/skills`。
+
+**安装命令**:
+
+| 套件 | 检测命令 | 安装命令 |
+|------|----------|----------|
+| gstack | `SKILLS_DIR=$(test -d ~/.qoder/skills && echo ~/.qoder/skills || echo ~/.claude/skills); test -d "$SKILLS_DIR/gstack" && echo "ok"` | 见下方脚本 |
+| Superpowers | `SKILLS_DIR=$(test -d ~/.qoder/skills && echo ~/.qoder/skills || echo ~/.claude/skills); for s in writing-plans executing-plans subagent-driven-development requesting-code-review test-driven-development; do test -e "$SKILLS_DIR/$s" || { echo "missing: $s"; exit 1; }; done && echo "ok"` | 见下方脚本 |
+| planning-with-files | `SKILLS_DIR=$(test -d ~/.qoder/skills && echo ~/.qoder/skills || echo ~/.claude/skills); test -e "$SKILLS_DIR/planning-with-files-zh" && echo "ok"` | 见下方脚本 |
+
+**gstack 自动安装**:
+
+```bash
+SKILLS_DIR=$(test -d ~/.qoder/skills && echo ~/.qoder/skills || echo ~/.claude/skills) && if [ -d "$SKILLS_DIR/gstack" ]; then cd "$SKILLS_DIR/gstack" && git pull && bash ./setup; else git clone --single-branch --depth 1 https://github.com/garrytan/gstack.git "$SKILLS_DIR/gstack" && cd "$SKILLS_DIR/gstack" && bash ./setup; fi
+```
+
+**Superpowers 自动安装**（从插件缓存链接到 skills 目录）:
+
+```bash
+SUPERPOWERS_SRC=$(find ~/.claude/plugins/cache -path "*/superpowers/*/skills" -type d 2>/dev/null | sort -V | tail -1) && if [ -z "$SUPERPOWERS_SRC" ]; then echo "ERROR: Superpowers plugin not found in cache. Install the plugin in Claude Code first."; exit 1; fi && SKILLS_DIR=$(test -d ~/.qoder/skills && echo ~/.qoder/skills || echo ~/.claude/skills) && for skill in "$SUPERPOWERS_SRC"/*/; do name=$(basename "$skill"); ln -sfn "$skill" "$SKILLS_DIR/$name"; done && echo "Superpowers installed: $(ls "$SKILLS_DIR" | grep -cE 'writing-plans|executing-plans|subagent-driven|requesting-code|test-driven') skills linked"
+```
+
+**planning-with-files 自动安装**（从插件缓存链接）:
+
+```bash
+PWF_SRC=$(find ~/.claude/plugins/cache -path "*planning-with-files*/planning-with-files-zh" -type d 2>/dev/null | sort -V | tail -1) && if [ -z "$PWF_SRC" ]; then echo "ERROR: planning-with-files plugin not found in cache. Install the plugin in Claude Code first."; exit 1; fi && SKILLS_DIR=$(test -d ~/.qoder/skills && echo ~/.qoder/skills || echo ~/.claude/skills) && ln -sfn "$PWF_SRC" "$SKILLS_DIR/planning-with-files-zh" && echo "planning-with-files-zh installed"
+```
 
 如果用户明确表示不需要某个套件，后续不再提示。
+
+---
+
+## 流程入口前置检查
+
+启动任何流程前，先确认以下事项（所有流程通用）：
+
+- [ ] 已在项目 Git 仓库根目录
+- [ ] 依赖已安装（`npm install` / `pip install` / 等），无安装错误
+- [ ] 测试套件基线已通过（记录当前测试状态，作为回归基准）
+- [ ] 已读取项目 CLAUDE.md / CONTRIBUTING.md / README（如有）
+
+如任一项不满足，先修复再进入流程。
+
+---
+
+## 子代理使用判断
+
+走"否则"路径（无 Superpowers 的 `subagent-driven-development` / `executing-plans`）时，按以下标准决定是否用 Task 子代理：
+
+| 场景 | 用 Task 子代理 | 自己做 |
+|------|-------------|--------|
+| 多文件、多步骤实现 | 每个独立模块派一个子代理并行 | — |
+| 单文件、单步骤实现 | — | 直接编码 |
+| 代码审查 | 用 `code-reviewer` 子代理 | — |
+| 探索/搜索代码库 | 用 `explore-agent` 子代理 | 目标明确的单次搜索 |
+| 调试调查 | — | 自己逐步排查 |
+
+并行条件：2+ 个子任务彼此无共享状态、无顺序依赖。否则串行。
 
 ---
 
@@ -149,6 +209,16 @@ allowed-tools:
 | 7. 全部完成审查 | 如可用: `/review` · 否则: 完整自查 diff (SQL安全/错误处理/边界/风格) | |
 | 8. 更新文档 | 如可用: `/document-release` · 否则: 手工更新 README/CHANGELOG/架构文档 | |
 | 9. 提交发布 | 如可用: `/ship` · 否则: 手工 merge → 测试 → commit → push → 创建 PR | |
+
+**输出物**:
+- 步骤1 → 设计文档（数据流图、接口定义、边界条件、技术权衡）
+- 步骤2 → 确认的范围文档或聊天记录（验收标准、用户故事）
+- 步骤3 → `task_plan.md`（带复选框的实施步骤清单）
+- 步骤4 → `progress.md`（初始进度记录）
+- 步骤5 → 代码 + 测试文件
+- 步骤6-7 → 审查记录（工具输出或 diff 分析）
+- 步骤8 → 更新后的 README / CHANGELOG / 架构文档
+- 步骤9 → PR 链接
 
 **完成条件**: 设计文档已写 → 实施计划已确认 → 所有测试通过 → 代码已审查 → 文档已同步 → PR 已创建。
 
@@ -176,6 +246,15 @@ allowed-tools:
 
 > 跨模块 bug → 步骤1如 gstack 可用: `/investigate` + `/freeze`，否则手工锁定调查范围。同一问题失败3次 → 写入 findings.md，停止并汇报。
 
+**输出物**:
+- 步骤1 → `findings.md`（根因分析记录：症状→排查路径→根因→影响范围）
+- 步骤2 → 失败测试文件（红）
+- 步骤3 → 修复代码 + 测试通过（绿）
+- 步骤4 → 测试运行报告
+- 步骤5 → diff 审查记录
+- 步骤6 → 更新后的文档（如适用）
+- 步骤7 → PR 链接
+
 **完成条件**: 根因已定位并记录 → 复现测试已通过（修复前红，修复后绿） → 全量测试无回归 → diff 已审查确认最小性。
 
 > **禁止:** 跳过根因定位直接改代码。越过复现测试直接修复。修复时顺手改无关代码或重构。不跑全量测试就提交。
@@ -187,18 +266,32 @@ allowed-tools:
 **核心原则:** 先理解旧实现的接口契约和调用方，再设计新方案。
 
 ```
-分析旧实现 → 架构审查 → 接流程A（步骤4起：初始化进度→编码→审查→发布）
+分析旧实现 → 架构审查 → 接流程A（初始化进度→编码→审查→发布）
 ```
 
 | 步骤 | 命令 | 说明 |
 |------|------|------|
 | 1. 分析旧实现 | 读代码 + Explore 子代理 | 理清：接口签名、调用方、数据流、测试覆盖 |
 | 2. 架构审查 | 如可用: `/plan-eng-review` · 否则: 手写新旧方案对比文档 | |
-| 3. 之后 | 接流程A 步骤4起（初始化进度→编码→审查→发布） | 已有架构审查(步骤1-2)和方案(本步骤)，跳过A的步骤1-3 |
+| 3. 初始化进度 | 如可用: `planning-with-files-zh` · 否则: 手工创建 `task_plan.md` | 已有架构审查(步骤1-2)，跳过A的步骤1-3 |
+| 4. 编码 | 如可用: `subagent-driven-development` 或 `executing-plans` · 否则: 逐步实现(写失败测试→通过→重构) | 严格 TDD |
+| 5. 每task审查 | 如可用: `requesting-code-review` · 否则: 自查每个完成步骤的 diff | |
+| 6. 全部完成审查 | 如可用: `/review` · 否则: 完整自查 diff | |
+| 7. 更新文档 | 如可用: `/document-release` · 否则: 手工更新 README/CHANGELOG/架构文档 | |
+| 8. 提交发布 | 如可用: `/ship` · 否则: 手工 merge → 测试 → commit → push → PR | |
 
 > **关键约束:** 接口签名不兼容变更时必须列出所有调用方。有测试覆盖的旧代码，先确认测试是否仍然有效。
 
-**完成条件**: 旧实现所有调用方已列出 → 新旧方案已对比 → 接流程A 完成条件。
+**输出物**:
+- 步骤1 → 旧实现分析文档（接口签名列表、调用方列表、数据流图、测试覆盖状况）
+- 步骤2 → 新旧方案对比文档（接口变更矩阵、迁移策略、风险点）
+- 步骤3 → `task_plan.md` + `progress.md`
+- 步骤4 → 代码 + 测试文件
+- 步骤5-6 → 审查记录
+- 步骤7 → 更新后的文档
+- 步骤8 → PR 链接
+
+**完成条件**: 旧实现所有调用方已列出 → 新旧方案已对比 → 所有测试通过 → 代码已审查 → 文档已同步 → PR 已创建。
 
 ---
 
@@ -223,6 +316,15 @@ allowed-tools:
 | 9. 提交 | 如可用: `/ship` · 否则: 手工 commit → push → PR | |
 
 > **禁止:** 没有测试安全网就重构。跨多模块一次性大改。重构同时加新功能。
+
+**输出物**:
+- 步骤1 → 测试文件（安全网，重构前全部通过）
+- 步骤2 → 瓶颈分析 + 重构边界文档
+- 步骤3 → `task_plan.md`（小步重构清单，每步可独立测试）
+- 步骤4 → 重构后代码 + 每步测试通过记录
+- 步骤5-7 → 审查记录
+- 步骤8 → 更新后的架构文档
+- 步骤9 → PR 链接
 
 **完成条件**: 测试安全网已建立 → 每步重构测试通过 → 全量测试无回归 → 行为与重构前一致。
 
@@ -255,6 +357,12 @@ allowed-tools:
 
 > **禁止:** 没看代码就下结论。只列优点不提风险。评估后直接开写（必须先输出结论文档）。
 
+**输出物**:
+- 步骤1 → 确认的评估范围文档（维度、判定标准、利益相关方）
+- 步骤2 → 现状分析笔记（架构图、调用链、数据流、性能数据）
+- 步骤3 → 至少 2 种方案的对比分析（每种覆盖 5 个评估维度）
+- 步骤4 → `findings.md`（结论 + 建议 + 行动计划 + 证据来源）
+
 **完成条件**: 至少对比2种方案 → 每种方案覆盖5个评估维度 → 结论文档已写入 findings.md → 结论明确标注证据来源。
 
 ---
@@ -276,6 +384,13 @@ allowed-tools:
 | 5. 复盘 | 写入 findings.md | 记录根因、修复过程、预防措施 |
 
 > **规则:** 流程F 可跳过审查和 TDD（当时），但事后必须补测试。同一问题出现 2 次紧急修复 → 升级为流程C（重做）。**禁止**以"紧急"为借口跳过事后补测。
+
+**输出物**:
+- 步骤1 → 止血操作记录（回滚/切流/关功能的操作和确认）
+- 步骤2 → 最小修复代码（无测试，仅修复代码）
+- 步骤3 → 上线确认（修复已生效的证据）
+- 步骤4 → 复现测试 + 回归测试文件
+- 步骤5 → `findings.md`（根因、修复过程、预防措施、时间线）
 
 **完成条件**: 线上已止血 → 修复已验证上线 → 事后补测已完成 → 复盘记录已写入 findings.md。
 
@@ -312,6 +427,15 @@ allowed-tools:
 
 > **禁止:** 不看 CHANGELOG 就升级。多包混合批量升级。升级同时加新功能或重构。无回滚方案直接升级。
 
+**输出物**:
+- 步骤1 → 兼容性分析笔记（每包 breaking changes、废弃 API、新环境要求）
+- 步骤2 → 升级计划（包顺序、回滚方案、风险点）
+- 步骤3 → 更新后的依赖配置文件 + 锁文件
+- 步骤4 → 全量测试运行报告
+- 步骤5 → diff 审查记录
+- 步骤6 → 更新后的技术栈文档 / README
+- 步骤7 → PR 链接
+
 **完成条件**: CHANGELOG 已逐包阅读 → 逐包升级每包测试通过 → 全量测试无回归 → 回滚方案已记录 → 文档已更新。
 
 ---
@@ -337,6 +461,48 @@ git branch -D test/task-name
 | 每完成一个 Task | 更新 task_plan.md（打勾）+ progress.md（记录） |
 | 发现关键信息 | 写入 findings.md |
 | 上下文即将耗尽时 | **必须先更新 progress.md**，然后开启新会话，新会话从 progress.md 恢复 |
+
+**文件格式**（走"否则"路径时手工创建，放在项目根目录）:
+
+`task_plan.md`:
+```markdown
+# 任务计划：[任务标题]
+
+- [ ] 步骤1：[描述]
+- [ ] 步骤2：[描述]
+- [x] 步骤3：[描述] ← 完成后打勾
+```
+
+`progress.md`:
+```markdown
+# 进度记录
+
+## [日期] 会话 N
+- 完成了：[描述]
+- 当前状态：[在步骤 X / 已完成]
+- 下一步：[描述]
+- 阻塞项：[无 / 描述]
+```
+
+`findings.md`:
+```markdown
+# 发现记录
+
+## [主题]
+- **日期**：YYYY-MM-DD
+- **发现**：[内容]
+- **证据**：[文件路径 / 代码行 / 数据]
+- **影响**：[描述]
+- **建议**：[描述]
+```
+
+**文件位置与 Git 策略**:
+
+| 文件 | 存放位置 | 是否提交 Git |
+|------|---------|-------------|
+| task_plan.md | Git 仓库根目录 | 不提交（本地临时任务追踪） |
+| progress.md | Git 仓库根目录 | 不提交（本地临时进度记录） |
+| findings.md | Git 仓库根目录 | 建议提交（跨会话的长期知识积累） |
 
 ## 文档更新规则
 
@@ -379,8 +545,9 @@ git branch -D test/task-name
 | 情况 | 处理方式 |
 |------|----------|
 | 步骤执行失败 | 停止当前步骤，记录失败原因到 findings.md，不要跳过继续 |
-| 同一问题修复失败 3 次 | 停止，写入 findings.md，向用户汇报。可能是架构问题，考虑升级为流程C |
+| 同一问题修复失败 3 次 | 停止，写入 findings.md，向用户汇报。可能是架构问题，考虑升级为流程C。**跨会话计数**：每次失败记录到 progress.md（`失败次数: N/3`），新会话从 progress.md 读取继续计数 |
 | 测试套件无法通过 | 不发布。修复测试或修复代码，二选一，不允许跳过测试 |
 | 发现计划有遗漏 | 回到规划阶段补充，不要边写边改计划 |
 | 上下文即将耗尽 | 立即更新 progress.md → 开启新会话 → 从 progress.md 恢复 |
 | 流程执行中途发现走错流程 | 停止当前流程，记录已完成的步骤，切换到正确流程重新开始 |
+| 复合任务（涉及多个流程） | 按优先级拆解为独立子任务，依次执行。优先级：流程F（紧急）> 流程B（bug）> 流程G（升级）> 流程D（重构）> 流程A（新功能）。每个子任务独立走完完整流程，不交叉执行 |
