@@ -32,6 +32,27 @@ Or copy the directory directly if you prefer:
 cp -r . ~/.claude/skills/dev-flow
 ```
 
+## Usage Example
+
+User says: "用户登录功能偶尔报 500 错误"
+
+dev-flow routes through the decision tree:
+1. Will it change code? **Yes**
+2. Is it production emergency? **No** (occasional, not down)
+3. Is it a dependency upgrade? **No**
+4. Existing behavior but broken? **Yes** → **Flow B: Bug Fix**
+
+Execution:
+1. Locate root cause → trace error logs, find null pointer in auth service
+2. Write reproduction test → test that reproduces the 500 with the same input
+3. Fix → minimal code change to handle null case
+4. Run full test suite → all green, no regression
+5. Review diff → confirm fix is minimal and correct
+6. Update docs → add known issue to troubleshooting guide
+7. Commit & PR
+
+Each flow produces specific artifacts (findings.md, test files, review records) and enforces completion gates before proceeding.
+
 ## Optional Tool Suites
 
 The skill works standalone. Three optional tool suites provide enhanced capabilities:
